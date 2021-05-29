@@ -46,12 +46,6 @@ export default {
                     font: {family: "Arial", size: 11, color: ["black"]}
                 }
             }]
-            /*
-                ,
-                layout:{
-                    title: ""
-                }
-                */
         }
     }
 }
