@@ -1,24 +1,54 @@
-
 <template>
     <div>
 
-        <!--Dataframe table-->
+        <!--EDM Parameters-->
+
+        <span class="plaintext"> Method: </span>
+        <v-select v-model="method" :options="['Simplex','SMap']"></v-select>
+
+        <span class="plaintext"> Target: </span>
+        <v-select v-model="target" :options="dims"></v-select>
+
+        <span class="plaintext"> E: {{E}} </span>
+        <vue-slider v-model="E" :min="0" :max="15"/>
+
+        <span class="plaintext"> Theta: {{theta}} </span>
+        <vue-slider v-model="theta" :min="0" :max="15" :interval="0.01" />
+
+        <span class="plaintext"> Tau: {{tau}} </span>
+        <vue-slider v-model="tau" :min="-15" :max="15"/>
+
+        <span class="plaintext"> Tp: {{Tp}} </span>
+        <vue-slider v-model="Tp" :min="0" :max="15"/>
+
+        <span class="plaintext"> Lib: {{lib[0]}} : {{lib[1]}} </span>
+        <vue-slider v-model="lib"/>
+
+        <span class="plaintext"> Pred: {{pred[0]}} : {{pred[1]}} </span>
+        <vue-slider v-model="pred"/>
+
+        <button @click="run_prediction()">Run Prediction</button>
+
+        <!--pyEDM Prediction Plot -->
+        <Plotly v-bind:data="prediction_plot" :layout="prediction_plot_layout" 
+                                    :display-mode-bar="true"></Plotly>
+
+        <!--Dataframe Table-->
         <Plotly v-bind:data="table" :layout="table_layout" 
-                                            :display-mode-bar="true"></Plotly>
+                                    :display-mode-bar="true"></Plotly>
 
         <!--Dimension Selection-->
         <span class="plaintext">
             To exclude a column from the list of columns used in the scatter
             plots and dimensionality reduction projection, click on its name.
         </span>
-        <ul>
+        <ul class="cols_span">
             <li v-for='dim in dims' :key="dim.data" >
                 <span @click="exclude_dim(dim)"
                 v-bind:class="{ active: valid_dim(dim), nonactive:!valid_dim(dim) }">
                     {{dim}}</span>
             </li>
         </ul>
-
 
         <!--Scatter Plots-->
 
@@ -49,6 +79,19 @@
 </template>
 
 <style>
+.cols_span{
+    float: center;
+    display: flex;
+    color: white;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+}
+.cols_span span {
+    padding-left: 32px;
+    text-align: center;
+    cursor: pointer;
+}
 .center_div{
     display: flex;
     align-items: center;
@@ -68,6 +111,14 @@
 <script>
 import { Plotly } from 'vue-plotly'
 import { IntegerPlusminus } from 'vue-integer-plusminus'
+import VueSlider from 'vue-slider-component'
+import 'vue-slider-component/theme/antd.css'
+
+import Vue from 'vue'
+import vSelect from 'vue-select'
+import 'vue-select/dist/vue-select.css';
+
+Vue.component('v-select', vSelect)
 
 export default {
     methods:{
@@ -80,7 +131,32 @@ export default {
                      "project_3d":this.project_3d}
 
             this.get_projection(msg).then((res) => {
+                console.log(typeof(res.data))
                 this.reduction = res.data["reduction"]
+            })
+        },
+        run_prediction:function(){
+            var cols = []
+            for (var col of this.dataframe[0]){
+                if (!this.exclude_dims.includes(col)) cols.push(col)
+            }
+            var msg={"columns":cols,"E":this.E,"theta":this.theta, 
+                     "target":this.target,"tau":this.tau,"Tp":this.Tp,
+                     "lib":this.lib[0]+" "+this.lib[1],"method":this.method,
+                     "pred":this.pred[0]+" "+this.pred[1],"embedded":true,
+                     }
+
+            if (this.method=="Simplex"){
+                delete msg['theta']
+            }
+
+            this.get_prediction(msg).then((res) => {
+                // Catch exception returned as string (report to user later)
+                if (typeof(res.data)=="string"){
+                    console.log("Error: "+res.data)
+                    return
+                }
+                this.predictions = res.data.data
             })
         },
         exclude_dim:function(x){
@@ -95,10 +171,12 @@ export default {
     props:[
         'dataframe',
         'get_projection',
+        'get_prediction',
     ],
     components: {
         Plotly,
         IntegerPlusminus,
+        VueSlider,
     },
     data : function(){
         return {
@@ -111,6 +189,19 @@ export default {
             reduction:[],
             exclude_dims: ["time"],
 
+            E:1,
+            theta:1.0,
+            tau:-1,
+            Tp:1,
+            lib: [1,100],
+            pred:[1,100],
+            target: "",
+
+            predictions:[],
+            coefficients:[],
+
+            method:"Simplex",
+
         }
     },
 
@@ -118,6 +209,16 @@ export default {
 
         dims: function(){
             return this.dataframe[0].slice(1)
+        },
+
+        prediction_plot: function(){
+            return [
+                { x:this.predictions[0], y:this.predictions[1], name:"Obs." },
+                { x:this.predictions[0], y:this.predictions[2], name:"Pred." }
+            ]
+        },
+        prediction_plot_layout: function(){
+            return {title:"Predictions"}
         },
 
         reduction_plot: function(){
@@ -141,7 +242,7 @@ export default {
             ]
         },
         reduction_plot_layout: function(){
-            return {title:"DataFrame Table"}
+            return {title:"Projection Plot"}
         },
 
         table: function(){

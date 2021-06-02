@@ -4,7 +4,9 @@
             <b-card no-body>
                 <b-tabs card>
                     <b-tab title="Tab 1">
-                        <DataFramePlot :get_projection="get_projection"
+                        <DataFramePlot 
+                           :get_projection="get_projection"
+                           :get_prediction="get_prediction"
                                     v-bind:dataframe="dataframe"></DataFramePlot>
                     </b-tab>
                     <b-tab title="Tab 2">
@@ -21,7 +23,6 @@
 import axios from 'axios'
 
 import DataFramePlot from './components/DataFramePlot.vue'
-//import DataFrameTable from './components/DataFrameTable.vue'
 
 export default {
     name: 'App',
@@ -37,6 +38,10 @@ export default {
     methods:{
         get_projection(msg){
             const path = 'http://localhost:5000/get_projection';
+            return axios.post(path,msg)
+        },
+        get_prediction(msg){
+            const path = 'http://localhost:5000/get_prediction';
             return axios.post(path,msg)
         }
     },
