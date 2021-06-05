@@ -3,14 +3,11 @@
         <div>
             <b-card no-body>
                 <b-tabs card>
-                    <b-tab title="Tab 1">
-                        <DataFramePlot 
-                           :get_projection="get_projection"
-                           :get_prediction="get_prediction"
-                                    v-bind:dataframe="dataframe"></DataFramePlot>
+                    <b-tab title="DataFrame">
+                        <DataFramePlot :get_projection="get_projection" />
                     </b-tab>
-                    <b-tab title="Tab 2">
-                        <!--<DataFrameTable v-bind:dataframe2="dataframe"/>-->
+                    <b-tab title="Predictions">
+                        <Predictions :get_prediction="get_prediction" />
                     </b-tab>
                 </b-tabs>
             </b-card>
@@ -22,17 +19,20 @@
 
 import axios from 'axios'
 
+import {bus} from './main.js';
+
 import DataFramePlot from './components/DataFramePlot.vue'
+import Predictions from './components/Predictions.vue'
 
 export default {
     name: 'App',
     components: {
         DataFramePlot, 
-        //DataFrameTable
+        Predictions, 
     },
     data: function() {
         return { 
-            dataframe: [[],[]]
+            dataframe: [[],[]],
         }
     },
     methods:{
@@ -50,6 +50,7 @@ export default {
         return axios.post(path,{}).then((res) => {
             console.log("Successfully received dataframe from server.")
             this.dataframe = [res.data.header,res.data.data] 
+            bus.$emit('dataframe_init', this.dataframe);
         })
     }
 

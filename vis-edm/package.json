@@ -17,6 +17,7 @@
     "npm": "^7.13.0",
     "sass": "^1.32.13",
     "vue": "^2.6.11",
+    "vue-async-computed": "^3.9.0",
     "vue-integer-plusminus": "^1.5.1",
     "vue-numeric-input": "^1.0.6",
     "vue-plotly": "^1.1.0",

@@ -58,7 +58,6 @@ def get_projection():
     if use_time_axis:
         reduction = np.append(df[["time"]],reduction,1)
 
-    print(reduction.T.tolist())
     return jsonify({"reduction":reduction.T.tolist()})
 
 if __name__ == '__main__':
