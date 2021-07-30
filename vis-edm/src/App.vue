@@ -3,6 +3,13 @@
         <div>
             <b-card no-body>
                 <b-tabs card>
+                    <b-tab title="STGA">
+                        <StateTransitionAnalysis :get_stg="get_stg"
+                               :get_node_interactions="get_node_interactions"/>
+                    </b-tab>
+                    <b-tab title="CCM">
+                        <ConvergentCrossMapAnalysis :get_ccm="get_ccm"/>
+                    </b-tab>
                     <b-tab title="DataFrame">
                         <DataFramePlot :get_projection="get_projection" />
                     </b-tab>
@@ -21,14 +28,18 @@ import axios from 'axios'
 
 import {bus} from './main.js';
 
-import DataFramePlot from './components/DataFramePlot.vue'
-import Predictions from './components/Predictions.vue'
+import DataFramePlot                from './components/DataFramePlot.vue'
+import Predictions                  from './components/Predictions.vue'
+import ConvergentCrossMapAnalysis   from './components/CCM.vue'
+import StateTransitionAnalysis      from './components/STGA.vue'
 
 export default {
     name: 'App',
     components: {
         DataFramePlot, 
         Predictions, 
+        ConvergentCrossMapAnalysis,
+        StateTransitionAnalysis,
     },
     data: function() {
         return { 
@@ -36,19 +47,27 @@ export default {
         }
     },
     methods:{
+        server_request(endpoint,msg){
+            return axios.post('http://localhost:5000/'+endpoint,msg)
+        },
+        get_ccm(msg){
+            return this.server_request("get_ccm",msg)
+        },
+        get_stg(msg){
+            return this.server_request("get_stg",msg)
+        },
+        get_node_interactions(msg){
+            return this.server_request("get_node_interactions",msg)
+        },
         get_projection(msg){
-            const path = 'http://localhost:5000/get_projection';
-            return axios.post(path,msg)
+            return this.server_request("get_projection",msg)
         },
         get_prediction(msg){
-            const path = 'http://localhost:5000/get_prediction';
-            return axios.post(path,msg)
+            return this.server_request("get_prediction",msg)
         }
     },
     mounted: function() {
-        const path = 'http://localhost:5000/get_data';
-        return axios.post(path,{}).then((res) => {
-            console.log("Successfully received dataframe from server.")
+        return this.server_request("get_data",{}).then((res) => {
             this.dataframe = [res.data.header,res.data.data] 
             bus.$emit('dataframe_init', this.dataframe);
         })
@@ -66,4 +85,5 @@ export default {
     color: #2c3e50;
     margin-top: 60px;
 }
+
 </style>

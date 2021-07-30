@@ -10,12 +10,15 @@
           </span>
         </div>
 
+        <!--Scatter Plots-->
+        <div :style="{height:dyn_plot_height}" >
+        <Plotly v-bind:style="{height:dyn_plot_height}" 
+                v-bind:data="df_subplots" :layout="df_subplots_layout"
+                :display-mode-bar="true"/>
+        </div>
+
         <!--Dataframe Table-->
         <Plotly v-bind:data="df_table"/>
-
-        <!--Scatter Plots-->
-        <Plotly v-bind:data="df_subplots" :layout="df_subplots_layout"
-                :display-mode-bar="true"/>
 
         <!--Data Projection-->
 
@@ -25,6 +28,13 @@
 
     </div>
 </template>
+
+<style>
+#height_filler {
+    height: 100%;
+}
+</style>
+
 
 <script>
 
@@ -38,7 +48,8 @@ export default {
     },
     methods:{
         dataframe_init:function(df){
-            this.all_columns = df[0] = this.selected_columns = df[0].slice(1)
+            this.all_columns = this.selected_columns = df[0].slice(1)
+            console.log(this.all_columns)
             this.data = df[1].slice(1)
             this.recompute_projection()
         },
@@ -58,7 +69,6 @@ export default {
     ],
     data : function(){
         return {
-
             all_columns: [ ],
             selected_columns: [ ],
             data: [],
@@ -77,6 +87,9 @@ export default {
             return this.data.filter((_,idx) =>{
                 return this.selected_columns.includes(this.all_columns[idx])
             })
+        },
+        dyn_plot_height:function(){
+            return (1000+100*this.selected_columns.length)+"px"
         },
         // DataFrame Table
         df_table: function(){
@@ -101,16 +114,22 @@ export default {
                         xaxis:"x"+(1+idx),
                         yaxis:"y"+(1+idx),
                         type:"scatter",
+                        name: this.selected_columns[idx],
                         y: data,
                     }
             })
         },
         df_subplots_layout: function(){
             var layout = {
-                grid: {rows: 1, 
-                       columns: this.selected_columns.length,
-                    pattern: 'independent'},
+                grid: { 
+                        rows: this.selected_columns.length,
+                        columns: 1,
+                        pattern: 'independent'},
                 title:"DataFrame Subplots",
+                annotations: []
+            }
+            for (var i=0;i<this.selected_data.length;i++){
+                layout["yaxis"+(1+i)]={"title":this.selected_columns[i]}
             }
             return layout
         },

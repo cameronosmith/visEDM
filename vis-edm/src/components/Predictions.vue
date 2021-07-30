@@ -3,49 +3,62 @@
 
         <!--EDM Parameters-->
 
-        <div id='app'>
-            <p>Columns</p>
-            <span class="cols_span" v-for="column in all_columns" :key="column">
-                <input type="checkbox" :value="column" v-model="selected_columns"> 
-                <span > {{column}} </span>
-            </span>
+        
+        <p>Columns</p>
+        <span class="cols_span" v-for="column in all_columns" :key="column">
+            <input type="checkbox" :value="column" v-model="selected_columns"> 
+            <span > {{column}} </span>
+        </span>
+
+        <div class="spaced_div">
+            <div>
+                <span > Method: </span>
+                <v-select v-model="method" :options="available_methods"/>
+            </div>
+            <div>
+                <span > Target: </span>
+                <v-select v-model="target" :options="selected_columns"></v-select>
+            </div>
         </div>
 
-        <br>
-        <span class="plaintext"> Method: </span>
-        <v-select v-model="method" :options="['Simplex','SMap']"></v-select>
 
-        <br>
-        <span class="plaintext"> Target: </span>
-        <v-select v-model="target" :options="selected_columns"></v-select>
+        <div>
+            <span > Embedded: </span>
+            <input type="checkbox" v-model="embedded"> 
+        </div>
+        <div class="spaced_div">
+            <div>
+                <span class="plaintext"> E: {{E}} </span>
+                <vue-slider v-model="E" :min="0" :max="15"/>
+            </div>
+            <div>
+                <span class="plaintext"> Theta: {{theta}} </span>
+                <vue-slider v-model="theta" :min="0" :max="15" :interval="0.01" />
+            </div>
+            <div>
+                <span class="plaintext"> Tau: {{tau}} </span>
+                <vue-slider v-model="tau" :min="-15" :max="15"/>
+            </div>
+            <div>
+                <span class="plaintext"> Tp: {{Tp}} </span>
+                <vue-slider v-model="Tp" :min="0" :max="15"/>
+            </div>
+        </div>
+        <div class="spaced_div">
+            <div>
+                <span class="plaintext"> Lib: {{lib[0]}} : {{lib[1]}} </span>
+                <vue-slider :max="max_df_range" v-model="lib" />
+            </div>
+            <div>
+                <span class="plaintext"> Pred: {{pred[0]}} : {{pred[1]}} </span>
+                <vue-slider :max="max_df_range" v-model="pred"/>
+            </div>
+        </div>
 
-        <br>
-        <span class="plaintext"> E: {{E}} </span>
-        <vue-slider v-model="E" :min="0" :max="15"/>
-
-        <br>
-        <span class="plaintext"> Theta: {{theta}} </span>
-        <vue-slider v-model="theta" :min="0" :max="15" :interval="0.01" />
-
-        <br>
-        <span class="plaintext"> Tau: {{tau}} </span>
-        <vue-slider v-model="tau" :min="-15" :max="15"/>
-
-        <br>
-        <span class="plaintext"> Tp: {{Tp}} </span>
-        <vue-slider v-model="Tp" :min="0" :max="15"/>
-
-        <br>
-        <span class="plaintext"> Lib: {{lib[0]}} : {{lib[1]}} </span>
-        <vue-slider :max="max_df_range" v-model="lib" />
-
-        <br>
-        <span class="plaintext"> Pred: {{pred[0]}} : {{pred[1]}} </span>
-        <vue-slider :max="max_df_range" v-model="pred"/>
 
         <!--pyEDM Prediction Plot -->
         <button @click="run_prediction()">Run Prediction</button>
-        <Plotly v-bind:data="prediction_plot"/>
+        <Plotly v-bind:data="prediction_plot" :layout="prediction_layout"/>
 
         </div>
 </template>
@@ -71,7 +84,7 @@ export default {
     },
     methods:{
         dataframe_init:function(df){
-            this.all_columns = df[0] = this.selected_columns = df[0].slice(1)
+            this.all_columns = this.selected_columns = df[0].slice(1)
             this.data = df[1].slice(1)
             this.max_df_range = df[1][0].length
             this.lib  = [1,df[1][0].length]
@@ -81,14 +94,17 @@ export default {
             var msg={"columns":this.selected_columns,"E":this.E,
                      "target":this.target,"tau":this.tau,"Tp":this.Tp,
                      "lib":this.lib[0]+" "+this.lib[1],"method":this.method,
-                     "pred":this.pred[0]+" "+this.pred[1],"embedded":true,
+                     "pred":this.pred[0]+" "+this.pred[1],
+                     "embedded":this.embedded, "showPlot":false,
                      }
             if (this.method=="SMap") msg["theta"]=this.theta
+            if (this.method=="EmbedDimension") delete msg["E"]
+            if (this.method=="PredictInterval") delete msg["Tp"]
             
             this.get_prediction(msg).then((res) => {
                 // Catch exception returned as string (report to user later)
                 if (typeof(res.data)=="string"){
-                    console.log("Error: "+res.data)
+                    alert("Error: "+res.data)
                     return
                 }
                 this.predictions = res.data.data
@@ -112,10 +128,13 @@ export default {
             lib: [1,1000],
             pred:[1,1],
             target: "",
-            method: "Simplex",
+            embedded: true,
+            available_methods: ['Simplex','SMap','EmbedDimension',
+                                'PredictNonlinear','PredictInterval'],
+            method: 'Simplex',
 
             predictions:[],
-
+            prediction_score:"",
         }
     },
     mounted: function(){
@@ -128,10 +147,12 @@ export default {
             })
         },
         prediction_plot: function(){
-            return [
-                { x:this.predictions[0], y:this.predictions[1], name:"Obs." },
-                { x:this.predictions[0], y:this.predictions[2], name:"Pred." }
-            ]
+            return [{x:this.predictions[0],y:this.predictions[1],name:"Obs."}
+              ].concat(!this.available_methods.slice(0,2).includes(this.method)?
+                 []:{x:this.predictions[0],y:this.predictions[2],name:"Pred."})
+        },
+        prediction_layout: function(){
+            return {"title": this.prediction_score}
         },
     },
 }
@@ -142,6 +163,35 @@ export default {
     display:inline-block;
     color:black;
     padding-right:15px;
+}
+
+</style>
+
+<style scoped>
+.cols_span{
+    display:inline-block;
+    color:black;
+    padding-right:15px;
+}
+/* container that evenly spaces divs inside it */
+.spaced_div {
+    display: flex;
+    justify-content: space-evenly;
+    margin:30px;
+}
+.spaced_div div {
+    margin:5px;
+    width: 100%;
+    display:block;
+    float:center;
+    text-align:center;
+    height: 50px;
+}
+.spaced_div div:first-child {
+    border-left: 0;
+}
+.spaced_div div:last-child {
+    border-right: 0;
 }
 </style>
 
