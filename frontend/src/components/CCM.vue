@@ -45,11 +45,6 @@
 
         <!--pyEDM Prediction Plot -->
         <button @click="run_prediction()">Run Interactions</button>
-        <!--
-        <span class="plaintext"> Num Rows: {{num_subplot_rows}} </span>
-        <vue-slider :min="1" :max="10" v-model="num_subplot_rows" />
-        <Plotly v-bind:data="prediction_plot" :layout="prediction_layout"/>
-        -->
 
         <!--Scatter Plots-->
         <div :style="{height:dyn_plot_height}" >
@@ -117,6 +112,9 @@ export default {
             all_columns: [ ],
             selected_columns: [ ],
             data: [],
+            projection_methods:["PCA","Isomap","TSNE","MDS",
+               "LocallyLinearEmbedding"],
+            projection_method:"PCA",
 
             num_subplot_rows:1,
 
@@ -164,25 +162,15 @@ export default {
                         rows: this.interaction_results.length,
                         columns: 1,
                         pattern: 'independent'},
-                title:"DataFrame Subplots",
+                title:"DataFrame Subplots" +((this.interaction_results.length)?
+                    "":" (Will populate after 'Run Interactions')"),
+
             }
             for (var i=0;i<this.interaction_results.length;i++){
                 layout["yaxis"+(1+i)]={"title":this.interaction_results[i][0]}
             }
             return layout
         },
-        /*
-        prediction_layout: function(){
-            var layout = {
-                grid: {rows: this.num_subplot_rows,
-                    columns: Math.ceil(this.interaction_results.length/
-                                        this.num_subplot_rows),
-                    pattern: 'independent'},
-                title:"DataFrame Subplots",
-            }
-            return layout
-        },
-        */
     },
 }
 </script>

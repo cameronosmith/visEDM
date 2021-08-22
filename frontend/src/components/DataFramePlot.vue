@@ -10,6 +10,25 @@
           </span>
         </div>
 
+        <!-- Projection Selection -->
+        <div class="spaced_div">
+            <div>
+                <span > Projection Method: </span>
+                <v-select v-model="projection_method" 
+                          @click="recompute_projection()"
+                          :options="projection_methods"></v-select>
+            </div>
+        </div>
+        <div>
+            <span><label for="checkbox" class="plaintext">3D projection</label>
+            <input type="checkbox" v-model="project_3d">
+            </span>
+        </div>
+
+        <!--Data Projection-->
+        <Plotly v-bind:data="df_projection"/>
+
+
         <!--Scatter Plots-->
         <div :style="{height:dyn_plot_height}" >
         <Plotly v-bind:style="{height:dyn_plot_height}" 
@@ -19,12 +38,6 @@
 
         <!--Dataframe Table-->
         <Plotly v-bind:data="df_table"/>
-
-        <!--Data Projection-->
-
-        <input @click="recompute_projection()" type="checkbox" v-model="project_3d">
-        <label for="checkbox" class="plaintext">3D projection</label>
-        <Plotly v-bind:data="df_projection"/>
 
     </div>
 </template>
@@ -57,8 +70,13 @@ export default {
             if (this.selected_columns.length){
                 var msg={"columns":this.selected_columns,
                          "time_axis":false,
+                         "projection_method":this.projection_method,
                          "project_3d":this.project_3d}
                 this.get_projection(msg).then((res) => {
+                    if (typeof(res.data)=="string"){
+                        alert("Server Side Error: "+res.data)
+                        return
+                    }
                     this.projection_data = res.data.reduction
                 })
             }
@@ -73,6 +91,9 @@ export default {
             selected_columns: [ ],
             data: [],
             projection_data: [],
+            projection_methods:["PCA","Isomap","TSNE","MDS",
+               "LocallyLinearEmbedding"],
+            projection_method:"PCA",
 
             project_3d: false,
         }
@@ -135,7 +156,9 @@ export default {
         },
         // DataFrame Projection
         df_projection: function(){
+            console.log("abouttocheck")
             if (this.projection_data.length==0) return []
+            console.log("checking")
             const n_row = this.projection_data[0].length
             return [
                 {
@@ -159,6 +182,26 @@ export default {
     display:inline-block;
     color:black;
     padding-right:15px;
+}
+/* container that evenly spaces divs inside it */
+.spaced_div {
+    display: flex;
+    justify-content: space-evenly;
+    margin:30px;
+}
+.spaced_div div {
+    margin:5px;
+    width: 100%;
+    display:block;
+    float:center;
+    text-align:center;
+    height: 50px;
+}
+.spaced_div div:first-child {
+    border-left: 0;
+}
+.spaced_div div:last-child {
+    border-right: 0;
 }
 </style>
 

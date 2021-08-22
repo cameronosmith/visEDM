@@ -36,13 +36,23 @@
         <div class="spaced_div">
             <div>
                 <span class="plaintext"> Window size: {{window_size}} </span>
-                <vue-slider @drag-end="test" :drag-on-click="true" 
+                <vue-slider :drag-on-click="true" 
                     v-model="window_size" :min="1" :max="max_window_size"/>
             </div>
             <div>
                 <span class="plaintext"> Window idx: {{interaction_window_idx}} </span>
                 <vue-slider v-model="interaction_window_idx" :min="1" 
                     :max="Math.round(max_window_size/window_size)"/>
+            </div>
+        </div>
+
+        <!-- Projection Selection -->
+        <div class="spaced_div">
+            <div>
+                <span > Projection Method: </span>
+                <v-select v-model="projection_method" 
+                          @click="recompute_projection()"
+                          :options="projection_methods"></v-select>
             </div>
         </div>
 
@@ -61,23 +71,12 @@
         <Plotly v-on:selected="create_stg_node"
            v-bind:data="stg_reduction_plot" :layout="stg_reduction_layout"/>
         <br>
-        <Plotly v-on:click="delete_stg_node"
+        <Plotly v-on:click="stg_node_click"
         v-bind:data="node_interaction_plot" :layout="node_interaction_layout"/>
         <br>
     </div>
         
 </template>
-
-- User can brushlink select nodes in the STG, and a node bubble will appear.
-Need to review what happens with those nodes (frequency calculations)
-- Scatter plots underneath interaction matrix to view the selected nodes in
-their original time series.
-- User chooses between color on projection: time, node group, or window
-- Second plot after interaction matrix of variables shows interaction matrix 
-    of selected nodes: node bubble position is mean of points in group,
-    click deletes node, and arrow strength is number of frequency transition
-    not a scatter plot so no mean position instead interaction plot with 
-    color and letter on text
 
 <script>
 
@@ -99,19 +98,24 @@ export default {
         VueSlider,
     },
     methods:{
-        test:function(x){
-            console.log(x)
-        },
-        delete_stg_node:function(points_data){
+        stg_node_click:function(points_data){
             var pt_idx = points_data["points"][0]["pointIndex"]
-            this.stg_nodes.splice(pt_idx,1)
-            this.node_means.splice(pt_idx,1)
-            this.node_colors.splice(pt_idx,1)
-            this.stg_node_interactions.splice(pt_idx,1)
-            for (var i=0;i<this.stg_node_interactions.length;i++){
-                this.stg_node_interactions[i].splice(pt_idx,1)
+            // If shift pressed, rename 
+            if (points_data["event"].shiftKey){
+                var copy_names = [...this.node_names]
+                copy_names[pt_idx]=prompt("noice")
+                this.node_names=copy_names
             }
-
+            // Else delete node
+            else {
+                this.stg_nodes.splice(pt_idx,1)
+                this.node_means.splice(pt_idx,1)
+                this.node_colors.splice(pt_idx,1)
+                this.stg_node_interactions.splice(pt_idx,1)
+                for (var i=0;i<this.stg_node_interactions.length;i++){
+                    this.stg_node_interactions[i].splice(pt_idx,1)
+                } 
+            }
         },
 
         create_stg_node:function(lasso_data){
@@ -119,6 +123,7 @@ export default {
             var pts = lasso_data["lassoPoints"]
             var pts_avg = ["x","y"].map(c=>pts[c].reduce((acc,c) =>acc+c,0)/pts[c].length)
             this.node_means.push(pts_avg)
+            this.node_names.push("Node "+(this.stg_nodes.length+1))
 
             var rand_intensity = () => Math.random() * 256 >> 0;
             this.node_colors.push(`rgb(${rand_intensity()}, ${rand_intensity()}, 
@@ -141,6 +146,7 @@ export default {
             this.pred = [1,df[1][0].length]
             this.max_window_size = df[1][0].length-1
             this.window_size = df[1][0].length-1
+            this.run_prediction()
         },
         run_prediction:function(){
             var msg={"columns":this.selected_columns,"E":1,
@@ -148,6 +154,7 @@ export default {
                      "embedded":true, "showPlot":false,
                      "lib":this.lib[0]+" "+this.lib[1],
                      "pred":this.pred[0]+" "+this.pred[1],
+                     "projection_method":this.projection_method,
                      }
             this.get_stg(msg).then((res) => {
                 // Catch exception returned as string (report to user later)
@@ -158,7 +165,7 @@ export default {
                 this.stg_reduction = res.data.reduction
                 this.coef_mat_split = res.data.coef_mat
                 this.max_window_idx = res.data.coef_mat.length-1
-                this.interaction_window_idx=1
+                console.log("in")
             })
         },
     },
@@ -176,8 +183,13 @@ export default {
             // each element is a list of point indices
             stg_nodes:[],
             stg_node_interactions:[],
+            node_names:[],
             node_means:[],
             node_colors:[],
+
+            projection_methods:["PCA","Isomap","TSNE","MDS",
+               "LocallyLinearEmbedding"],
+            projection_method:"PCA",
 
             E:1,
             tau:-1,
@@ -199,6 +211,7 @@ export default {
     },
     mounted: function(){
         bus.$on('dataframe_init', this.dataframe_init);
+        console.log("back")
     },
 
     computed:{
@@ -247,14 +260,16 @@ export default {
             },
             stg_reduction_layout: function(){
                 var layout = {
-                    title:"DataFrame Subplots",
+                    title:"DataFrame Subplots"+ ((this.stg_nodes.length)? "":
+                          " (Use the lasso tool on hover to create STG nodes)"),
                 }
                 return layout
             },
             node_interaction_layout: function(){
                 var layout = {
                     annotations: [],
-                    title:"STG Node Interactions"
+                    title:"STG Node Interactions"+ ((this.stg_nodes.length)? "":
+                            " (Nodes will appear when you select them above)")
                 };
                 for (var i=0;i<this.stg_node_interactions.length;i++){
                     for (var j=0;j<this.stg_node_interactions.length;j++){
@@ -292,11 +307,11 @@ export default {
                 var total_occ = node_to_window_pop.reduce((a, b) => a + b, 0)
                 var sizes = node_to_window_pop.map(x=>Math.max(30,200*x/total_occ))
                 
-                //.map(size=> Math.max(10, Math.min(3000,200*size/this.window_size))
                 var data = [
                   {
                     type: 'scatter',
-                    mode: 'markers',
+                    mode: 'markers+text',
+                    text: this.node_names,
                     x: means.map(x=>x[0]),
                     y: means.map(x=>x[1]),
                     marker:{  color:this.node_colors,
@@ -333,4 +348,5 @@ export default {
     border-right: 0;
 }
 </style>
+
 

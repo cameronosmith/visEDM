@@ -3,15 +3,15 @@
         <div>
             <b-card no-body>
                 <b-tabs card>
+                    <b-tab title="DataFrame">
+                        <DataFramePlot :get_projection="get_projection" />
+                    </b-tab>
                     <b-tab title="STGA">
                         <StateTransitionAnalysis :get_stg="get_stg"
                                :get_node_interactions="get_node_interactions"/>
                     </b-tab>
                     <b-tab title="CCM">
                         <ConvergentCrossMapAnalysis :get_ccm="get_ccm"/>
-                    </b-tab>
-                    <b-tab title="DataFrame">
-                        <DataFramePlot :get_projection="get_projection" />
                     </b-tab>
                     <b-tab title="Predictions">
                         <Predictions :get_prediction="get_prediction" />
@@ -26,12 +26,12 @@
 
 import axios from 'axios'
 
-import {bus} from './main.js';
+import {bus} from '../main.js';
 
-import DataFramePlot                from './components/DataFramePlot.vue'
-import Predictions                  from './components/Predictions.vue'
-import ConvergentCrossMapAnalysis   from './components/CCM.vue'
-import StateTransitionAnalysis      from './components/STGA.vue'
+import DataFramePlot                from './DataFramePlot.vue'
+import Predictions                  from './Predictions.vue'
+import ConvergentCrossMapAnalysis   from './CCM.vue'
+import StateTransitionAnalysis      from './STGA.vue'
 
 export default {
     name: 'App',
@@ -48,6 +48,7 @@ export default {
     },
     methods:{
         server_request(endpoint,msg){
+            console.log("sending reuqest to",endpoint)
             return axios.post('http://localhost:5000/'+endpoint,msg)
         },
         get_ccm(msg){
@@ -68,6 +69,10 @@ export default {
     },
     mounted: function() {
         return this.server_request("get_data",{}).then((res) => {
+            if (typeof(res.data)=="string"){
+                alert("Server Side Error: "+res.data)
+                return
+            }
             this.dataframe = [res.data.header,res.data.data] 
             bus.$emit('dataframe_init', this.dataframe);
         })
