@@ -17,7 +17,7 @@
             </div>
             <div>
                 <span > Target: </span>
-                <v-select v-model="target" :options="selected_columns"></v-select>
+                <v-select v-model="target" :options="all_columns"></v-select>
             </div>
         </div>
 

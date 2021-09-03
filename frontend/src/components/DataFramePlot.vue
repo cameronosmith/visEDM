@@ -1,6 +1,5 @@
 <template>
     <div>
-
         <!--Column Selection-->
         <div id='app'>
           <p>Columns</p>
@@ -62,7 +61,6 @@ export default {
     methods:{
         dataframe_init:function(df){
             this.all_columns = this.selected_columns = df[0].slice(1)
-            console.log(this.all_columns)
             this.data = df[1].slice(1)
             this.recompute_projection()
         },
@@ -156,9 +154,7 @@ export default {
         },
         // DataFrame Projection
         df_projection: function(){
-            console.log("abouttocheck")
             if (this.projection_data.length==0) return []
-            console.log("checking")
             const n_row = this.projection_data[0].length
             return [
                 {

@@ -3,12 +3,12 @@
         <div>
             <b-card no-body>
                 <b-tabs card>
-                    <b-tab title="DataFrame">
-                        <DataFramePlot :get_projection="get_projection" />
-                    </b-tab>
                     <b-tab title="STGA">
                         <StateTransitionAnalysis :get_stg="get_stg"
                                :get_node_interactions="get_node_interactions"/>
+                    </b-tab>
+                    <b-tab title="DataFrame">
+                        <DataFramePlot :get_projection="get_projection" />
                     </b-tab>
                     <b-tab title="CCM">
                         <ConvergentCrossMapAnalysis :get_ccm="get_ccm"/>
@@ -48,7 +48,6 @@ export default {
     },
     methods:{
         server_request(endpoint,msg){
-            console.log("sending reuqest to",endpoint)
             return axios.post('http://localhost:5000/'+endpoint,msg)
         },
         get_ccm(msg){

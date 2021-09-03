@@ -1,6 +1,6 @@
 <template>
     <div>
-        
+
         <!--EDM Parameters-->
 
         <div id='app'>
@@ -103,7 +103,7 @@ export default {
             // If shift pressed, rename 
             if (points_data["event"].shiftKey){
                 var copy_names = [...this.node_names]
-                copy_names[pt_idx]=prompt("noice")
+                copy_names[pt_idx]=prompt("New node name:")
                 this.node_names=copy_names
             }
             // Else delete node
@@ -111,6 +111,7 @@ export default {
                 this.stg_nodes.splice(pt_idx,1)
                 this.node_means.splice(pt_idx,1)
                 this.node_colors.splice(pt_idx,1)
+                this.node_names.splice(pt_idx,1)
                 this.stg_node_interactions.splice(pt_idx,1)
                 for (var i=0;i<this.stg_node_interactions.length;i++){
                     this.stg_node_interactions[i].splice(pt_idx,1)
@@ -119,6 +120,8 @@ export default {
         },
 
         create_stg_node:function(lasso_data){
+
+            this.use_node_colors = true
 
             var pts = lasso_data["lassoPoints"]
             var pts_avg = ["x","y"].map(c=>pts[c].reduce((acc,c) =>acc+c,0)/pts[c].length)
@@ -165,7 +168,6 @@ export default {
                 this.stg_reduction = res.data.reduction
                 this.coef_mat_split = res.data.coef_mat
                 this.max_window_idx = res.data.coef_mat.length-1
-                console.log("in")
             })
         },
     },
@@ -187,8 +189,7 @@ export default {
             node_means:[],
             node_colors:[],
 
-            projection_methods:["PCA","Isomap","TSNE","MDS",
-               "LocallyLinearEmbedding"],
+            projection_methods:["PCA","Isomap","TSNE","MDS","LocallyLinearEmbedding"],
             projection_method:"PCA",
 
             E:1,
@@ -211,10 +212,10 @@ export default {
     },
     mounted: function(){
         bus.$on('dataframe_init', this.dataframe_init);
-        console.log("back")
     },
 
     computed:{
+
         selected_data: function(){
             return this.data.filter((_,idx) =>{
                 return this.selected_columns.includes(this.all_columns[idx])
@@ -260,60 +261,62 @@ export default {
             },
             stg_reduction_layout: function(){
                 var layout = {
-                    title:"DataFrame Subplots"+ ((this.stg_nodes.length)? "":
-                          " (Use the lasso tool on hover to create STG nodes)"),
+                    title:"STGA Projection"+ ((this.stg_nodes.length)? "":
+                          " (Drag around a set of points to create a STG node)"),
+                    dragmode: "lasso",
                 }
                 return layout
             },
             node_interaction_layout: function(){
                 var layout = {
                     annotations: [],
-                    title:"STG Node Interactions"+ ((this.stg_nodes.length)? "":
+                    title:"STG Node Interactions"+ ((this.stg_nodes.length)? 
+                            " (Click on node to delete, Shift+Click to rename)":
                             " (Nodes will appear when you select them above)")
                 };
+
+                const delta=.05
                 for (var i=0;i<this.stg_node_interactions.length;i++){
                     for (var j=0;j<this.stg_node_interactions.length;j++){
+                        const sign = i<j ? 1:-1;
                         if (i!=j){
                             layout["annotations"].push({
-                                xref: 'x',
-                                axref: 'x',
-                                yref: 'y',
-                                ayref: 'y',
-                                showarrow: true,
-                                arrowhead: 1,
-                                arrowwidth: .1*this.stg_node_interactions[i][j],
+                                xref: 'x', axref:'x', yref: 'y', ayref:'y',
+                                showarrow: true, arrowhead: 1,
+                                arrowsize:1.5,
+                                arrowcolor : this.node_colors[i],
+                                arrowwidth: .2*this.stg_node_interactions[i][j],
                                 x:  this.node_means[i][0],
-                                y:  this.node_means[i][1],
+                                y:  this.node_means[i][1]+delta*sign,
                                 ax: this.node_means[j][0],
-                                ay: this.node_means[j][1],
-                                opacity:.2,
+                                ay: this.node_means[j][1]+delta*sign,
+                                opacity:.5,
                             })
                         }
                     }
                 }
                 return layout
-
             },
             node_interaction_plot: function(){
 
                 if (!this.node_means.length) return []
 
-                var means=this.node_means
                 // Size is defined as amount node occupies in window * 200
                 var node_to_window_pop = this.stg_nodes.map(node=>node.filter(idx=>
                     idx >= this.window_size*(this.interaction_window_idx-1) &&
-                    idx <= this.window_size*this.interaction_window_idx
-                                                    ).length)
+                    idx <= this.window_size *this.interaction_window_idx).length)
                 var total_occ = node_to_window_pop.reduce((a, b) => a + b, 0)
-                var sizes = node_to_window_pop.map(x=>Math.max(30,200*x/total_occ))
+                var sizes = node_to_window_pop.map(x=>Math.max(60,200*x/total_occ))
+
+                var means=this.node_means
                 
                 var data = [
                   {
-                    type: 'scatter',
-                    mode: 'markers+text',
                     text: this.node_names,
                     x: means.map(x=>x[0]),
                     y: means.map(x=>x[1]),
+                    type: 'scatter',
+                    mode: 'markers+text',
                     marker:{  color:this.node_colors,
                               size :sizes},
                   }

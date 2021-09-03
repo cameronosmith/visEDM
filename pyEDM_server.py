@@ -2,8 +2,7 @@ from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from functools import partial
 
-import pdb;
-f=pdb.set_trace
+from pdb import set_trace as pdb
 
 from pyEDM_interface import pyEDM_interface
 
@@ -15,7 +14,7 @@ def try_catch_wrap(func):
     try: return jsonify(func(request.json))
     except Exception as inst: return str(inst)
 
-def run_pyEDM_server(df):
+def run_pyEDM_server(df,port=5000):
 
     # instantiate the app
     if production_build:
@@ -45,10 +44,16 @@ def run_pyEDM_server(df):
         wrapped_func.__name__=url
         app.add_url_rule(url, view_func = wrapped_func, methods=["POST"])
 
-    app.run(debug=True, port=5000)
+    try:
+        app.run(debug=True, port=port)
+    except Exception as ex:
+        if str(ex)=="[Errno 98] Address already in use":
+            print(f"Port {port} busy, trying {port+1}")
+            run_pyEDM_server(df,port+1)
+        else:
+            print(ex)
 
 if __name__ == '__main__':
     import pyEDM
     df = pyEDM.sampleData["block_3sp"].round(2)
     run_pyEDM_server(df)
-
