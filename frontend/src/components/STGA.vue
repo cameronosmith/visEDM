@@ -285,7 +285,7 @@ export default {
                                 showarrow: true, arrowhead: 1,
                                 arrowsize:1.5,
                                 arrowcolor : this.node_colors[i],
-                                arrowwidth: .2*this.stg_node_interactions[i][j],
+                                arrowwidth: .1*this.stg_node_interactions[i][j],
                                 x:  this.node_means[i][0],
                                 y:  this.node_means[i][1]+delta*sign,
                                 ax: this.node_means[j][0],

@@ -10,18 +10,6 @@
             <span > {{column}} </span>
         </span>
 
-        <div class="spaced_div">
-            <div>
-                <span > Method: </span>
-                <v-select v-model="method" :options="available_methods"/>
-            </div>
-            <div>
-                <span > Target: </span>
-                <v-select v-model="target" :options="all_columns"></v-select>
-            </div>
-        </div>
-
-
         <div>
             <span > Embedded: </span>
             <input type="checkbox" v-model="embedded"> 
@@ -39,10 +27,6 @@
                 <span class="plaintext"> Tau: {{tau}} </span>
                 <vue-slider v-model="tau" :min="-15" :max="15"/>
             </div>
-            <div>
-                <span class="plaintext"> Tp: {{Tp}} </span>
-                <vue-slider v-model="Tp" :min="0" :max="15"/>
-            </div>
         </div>
         <div class="spaced_div">
             <div>
@@ -54,17 +38,38 @@
                 <vue-slider :max="max_df_range" v-model="pred"/>
             </div>
         </div>
+
+        <div class="spaced_div">
+            <div>
+                <span > Target: </span>
+                <v-select v-model="target" :options="all_columns"></v-select>
+            </div>
+            <div>
+                <span > Projection Method: </span>
+                <v-select v-model="projection_method" 
+                          @click="recompute_projection()"
+                          :options="projection_methods"></v-select>
+            </div>
+        </div>
+        <div>
+            <span><label for="checkbox" class="plaintext">3D projection</label>
+            <input type="checkbox" v-model="project_3d">
+            </span>
+        </div>
+
+
+
         <div class="spaced_div">
             <div>
                 <p>Conditional Embedding Filter:</p>
                 <input v-model="cond_emb_filter" placeholder="ex: x > y">
+                <button @click="run_projection()">Run Projection</button>
             </div>
         </div>
 
-
-        <!--pyEDM Prediction Plot -->
-        <button @click="run_prediction()">Run Prediction</button>
-        <Plotly v-bind:data="prediction_plot" :layout="prediction_layout"/>
+        <!--Conditional Embedding Projection Plot -->
+        <Plotly v-bind:data="projection_plot" :layout="projection_layout"/>
+        <Plotly v-bind:data="target_plot" :layout="target_layout"/>
 
         </div>
 </template>
@@ -94,33 +99,30 @@ export default {
             this.data = df[1].slice(1)
             this.max_df_range = df[1][0].length
             this.lib  = [1,df[1][0].length]
-            this.pred = [1,df[1][0].length]
+            this.pred = [1,2]
             this.target = df[0][1]
         },
-        run_prediction:function(){
+        run_projection:function(){
             var msg={"columns":this.selected_columns,"E":this.E,
+                     "tau":this.tau,
+                     "lib":this.lib, "pred":this.pred,
+
                      "cond_emb_filter":this.cond_emb_filter,
-                     "target":this.target,"tau":this.tau,"Tp":this.Tp,
-                     "lib":this.lib[0]+" "+this.lib[1],"method":this.method,
-                     "pred":this.pred[0]+" "+this.pred[1],
-                     "embedded":this.embedded, "showPlot":false,
+                     "embedded":this.embedded,
+                     "projection_method":this.projection_method,
                      }
-            if (this.method=="SMap") msg["theta"]=this.theta
-            if (this.method=="EmbedDimension") delete msg["E"]
-            if (this.method=="PredictInterval") delete msg["Tp"]
-            
-            this.get_prediction(msg).then((res) => {
+            this.get_cond_emb(msg).then((res) => {
                 // Catch exception returned as string (report to user later)
                 if (typeof(res.data)=="string"){
                     alert("Error: "+res.data)
                     return
                 }
-                this.predictions = res.data.data
+                this.projection_data = res.data.projection
             })
         },
     },
     props:[
-        'get_prediction',
+        'get_cond_emb',
     ],
     data : function(){
         return {
@@ -128,23 +130,22 @@ export default {
             selected_columns: [ ],
             data: [],
 
+            //first is all lib proj, then cond emb proj, targ proj
+            projection_data: [], 
+            projection_methods:["PCA","Isomap","TSNE","MDS",
+               "LocallyLinearEmbedding"],
+            projection_method:"PCA",
+
             E:1,
             theta:1.0,
             tau:-1,
-            Tp:1,
             max_df_range : 1000000,
             lib: [1,1000],
-            pred:[1,1],
-            target: "",
+            pred: [1,1000],
             embedded: true,
-            available_methods: ['Simplex','SMap','EmbedDimension',
-                                'PredictNonlinear','PredictInterval'],
-            method: 'Simplex',
-
+            project_3d: false,
             cond_emb_filter : "",
-
-            predictions:[],
-            prediction_score:"",
+            target : "",
         }
     },
     mounted: function(){
@@ -156,13 +157,49 @@ export default {
                 return this.selected_columns.includes(this.all_columns[idx])
             })
         },
-        prediction_plot: function(){
-            return [{x:this.predictions[0],y:this.predictions[1],name:"Obs."}
-              ].concat(!this.available_methods.slice(0,2).includes(this.method)?
-                 []:{x:this.predictions[0],y:this.predictions[2],name:"Pred."})
+        projection_plot: function(){
+            if (this.projection_data.length==0) return []
+            return ["Unfiltered Library","Filtered Library,","Target"].map(
+                (name,i)=> ({
+                    type: this.project_3d ? 'scatter3d':'scatter',
+                    mode: 'markers',
+                    x: this.projection_data[i][0],
+                    y: this.projection_data[i][1],
+                    z: this.projection_data[i][2],
+                    name:name,
+                    marker: {color: ["red","green","blue"][i], 
+                             size:[3,4,7][i],
+                             opacity:[.2,.9,.3][i]} 
+                    }),
+                )
         },
-        prediction_layout: function(){
-            return {"title": this.prediction_score}
+        projection_layout: function(){
+            return {
+                title:"Conditional Filter: "+this.cond_emb_filter,
+            }
+        },
+        target_plot: function(){
+            if (this.data.length==0) return []
+            const data_idx = this.all_columns.indexOf(this.target)
+            return [
+                {
+                    y: this.data[data_idx],
+                    x: this.data[data_idx].map((_,j)=>j),
+                    name:this.target,
+                    opacity:.3,
+                    color:"yellow",
+                },
+                {
+                    y: this.data[data_idx].slice(this.pred[0],this.pred[1]),
+                    x: this.data[data_idx].map((_,j)=>j).slice(this.pred[0],this.pred[1]),
+                    name:"Pred Range",
+                    opacity:.3,
+                    color:"yellow",
+                },
+            ]
+        },
+        target_layout: function(){
+            return {"title": this.target}
         },
     },
 }

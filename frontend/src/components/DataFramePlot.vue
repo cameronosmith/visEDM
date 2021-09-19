@@ -25,7 +25,7 @@
         </div>
 
         <!--Data Projection-->
-        <Plotly v-bind:data="df_projection"/>
+        <Plotly v-bind:data="df_projection" :layout="projection_layout"/>
 
 
         <!--Scatter Plots-->
@@ -67,9 +67,8 @@ export default {
         recompute_projection:function(){
             if (this.selected_columns.length){
                 var msg={"columns":this.selected_columns,
-                         "time_axis":false,
                          "projection_method":this.projection_method,
-                         "project_3d":this.project_3d}
+                }
                 this.get_projection(msg).then((res) => {
                     if (typeof(res.data)=="string"){
                         alert("Server Side Error: "+res.data)
@@ -92,6 +91,7 @@ export default {
             projection_methods:["PCA","Isomap","TSNE","MDS",
                "LocallyLinearEmbedding"],
             projection_method:"PCA",
+            projection_layout:{"title":"Projection"},
 
             project_3d: false,
         }

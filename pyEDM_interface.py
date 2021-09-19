@@ -12,7 +12,7 @@ def low_dim_projection(df,projection_name):
                "LocallyLinearEmbedding":LocallyLinearEmbedding,
                }[projection_name]
 
-    return project(n_components=3).fit_transform(df)
+    return project(n_components=min(3,df.shape[1])).fit_transform(df.dropna())
 
 class pyEDM_interface():
 
@@ -27,12 +27,22 @@ class pyEDM_interface():
     def get_prediction(self,request):
 
         method_name = request.pop("method")
+        ce_filter = request.pop("cond_emb_filter")
+
+
         pred_method = { "SMap"    : pyEDM.SMap,
                         "Simplex" : pyEDM.Simplex,
                         "PredictNonlinear" : pyEDM.PredictNonlinear,
                         "EmbedDimension" : pyEDM.EmbedDimension,
                         "PredictInterval" : pyEDM.PredictInterval,
                       }[method_name]
+
+        if len(ce_filter) and pred_method in [pyEDM.SMap,pyEDM.Simplex]:
+            validLib = self.df.eval(ce_filter)
+            if validLib.dtype!="bool":
+                raise Exception("Result of conditional filter must yield boolean")
+            request["validLib"] = validLib
+
 
         pred = pred_method(**request,dataFrame=self.df)
 
@@ -43,15 +53,31 @@ class pyEDM_interface():
     def get_projection(self,request):
 
         cols = request["columns"]
-        use_time_axis = request["time_axis"] or len(cols)==1
-        project_3d = request["project_3d"]
-
         reduction = low_dim_projection(self.df[cols],request["projection_method"])
-
-        if use_time_axis:
-            reduction = np.append(self.df[["time"]],reduction,1)
+        if len(cols)==1: reduction = np.append(self.df[["time"]],reduction,1)
 
         return {"reduction":reduction.T.tolist()}
+
+    def get_cond_emb(self,request):
+
+        lib,pred,filter_,projection_method = (request.pop(x) for x in
+                          ("lib","pred","cond_emb_filter","projection_method"))
+        embedding = self.df if request.pop("embedded") else\
+                                    pyEDM.Embed(**request,dataFrame=self.df)
+
+        reduction = low_dim_projection(embedding,projection_method)
+
+        cond_emb_proj = []*3
+        if len(filter_)!=0:
+            valid_lib = self.df.eval(filter_)
+            if valid_lib.dtype!="bool":
+                raise Exception("Result of conditional filter must yield boolean")
+            cond_emb_proj = reduction[valid_lib[:reduction.shape[0]]].T.tolist()
+
+        lib_proj  = reduction[lib[0]:min(reduction.shape[0],lib[1])].T.tolist()
+        pred_proj = reduction[pred[0]:min(reduction.shape[0],pred[1])].T.tolist()
+
+        return {"projection":[lib_proj,cond_emb_proj,pred_proj]}
 
     def get_node_interactions(self,request):
 
@@ -66,7 +92,6 @@ class pyEDM_interface():
             transition_mats.append(transition_mat.T.tolist())
 
         return {"transition_mats":transition_mats}
-
 
     def get_stg(self,request):
 

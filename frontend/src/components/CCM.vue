@@ -28,7 +28,7 @@
         <div class="spaced_div">
             <div>
                 <span class="plaintext"> Sample: {{sample}} </span>
-                <vue-slider v-model="sample" :min="1" :max="50"/>
+                <vue-slider v-model="sample" :min="1" :max="100"/>
             </div>
             <div>
                 <span class="plaintext"> 

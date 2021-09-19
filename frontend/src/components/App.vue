@@ -3,6 +3,12 @@
         <div>
             <b-card no-body>
                 <b-tabs card>
+                    <b-tab title="Conditional Embedding">
+                        <ConditionalEmbedding :get_cond_emb="get_cond_emb"/>
+                    </b-tab>
+                    <b-tab title="Predictions">
+                        <Predictions :get_prediction="get_prediction" />
+                    </b-tab>
                     <b-tab title="STGA">
                         <StateTransitionAnalysis :get_stg="get_stg"
                                :get_node_interactions="get_node_interactions"/>
@@ -12,9 +18,6 @@
                     </b-tab>
                     <b-tab title="CCM">
                         <ConvergentCrossMapAnalysis :get_ccm="get_ccm"/>
-                    </b-tab>
-                    <b-tab title="Predictions">
-                        <Predictions :get_prediction="get_prediction" />
                     </b-tab>
                 </b-tabs>
             </b-card>
@@ -32,6 +35,7 @@ import DataFramePlot                from './DataFramePlot.vue'
 import Predictions                  from './Predictions.vue'
 import ConvergentCrossMapAnalysis   from './CCM.vue'
 import StateTransitionAnalysis      from './STGA.vue'
+import ConditionalEmbedding         from './CondEmb.vue'
 
 export default {
     name: 'App',
@@ -40,6 +44,7 @@ export default {
         Predictions, 
         ConvergentCrossMapAnalysis,
         StateTransitionAnalysis,
+        ConditionalEmbedding,
     },
     data: function() {
         return { 
@@ -55,6 +60,9 @@ export default {
         },
         get_stg(msg){
             return this.server_request("get_stg",msg)
+        },
+        get_cond_emb(msg){
+            return this.server_request("get_cond_emb",msg)
         },
         get_node_interactions(msg){
             return this.server_request("get_node_interactions",msg)

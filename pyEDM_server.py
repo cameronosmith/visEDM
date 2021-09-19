@@ -8,9 +8,10 @@ from pyEDM_interface import pyEDM_interface
 
 DEBUG = True
 # True if should serve web client at pyEDM server address
-production_build = False
+production_build = True
 
 def try_catch_wrap(func):
+
     try: return jsonify(func(request.json))
     except Exception as inst: return str(inst)
 
@@ -39,6 +40,7 @@ def run_pyEDM_server(df,port=5000):
                      ("/get_node_interactions",pyEDM_interface.get_node_interactions),
                      ("/get_ccm",pyEDM_interface.get_ccm),
                      ("/get_stg",pyEDM_interface.get_stg),
+                     ("/get_cond_emb",pyEDM_interface.get_cond_emb),
                      ]:
         wrapped_func = partial(try_catch_wrap, partial(func,pyedm_int))
         wrapped_func.__name__=url
@@ -55,5 +57,7 @@ def run_pyEDM_server(df,port=5000):
 
 if __name__ == '__main__':
     import pyEDM
-    df = pyEDM.sampleData["block_3sp"].round(2)
+    #df = pyEDM.sampleData["circle"].round(2)
+    #df = pyEDM.sampleData["block_3sp"].round(2)
+    df = pyEDM.sampleData["sardine_anchovy_sst"].round(2)
     run_pyEDM_server(df)
