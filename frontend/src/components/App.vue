@@ -3,6 +3,9 @@
         <div>
             <b-card no-body>
                 <b-tabs card>
+                    <b-tab title="DataFrame">
+                        <DataFramePlot :get_projection="get_projection" />
+                    </b-tab>
                     <b-tab title="Conditional Embedding">
                         <ConditionalEmbedding :get_cond_emb="get_cond_emb"/>
                     </b-tab>
@@ -12,9 +15,6 @@
                     <b-tab title="STGA">
                         <StateTransitionAnalysis :get_stg="get_stg"
                                :get_node_interactions="get_node_interactions"/>
-                    </b-tab>
-                    <b-tab title="DataFrame">
-                        <DataFramePlot :get_projection="get_projection" />
                     </b-tab>
                     <b-tab title="CCM">
                         <ConvergentCrossMapAnalysis :get_ccm="get_ccm"/>

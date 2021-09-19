@@ -142,7 +142,7 @@ export default {
             max_df_range : 1000000,
             lib: [1,1000],
             pred: [1,1000],
-            embedded: true,
+            embedded: false,
             project_3d: false,
             cond_emb_filter : "",
             target : "",
@@ -168,7 +168,7 @@ export default {
                     z: this.projection_data[i][2],
                     name:name,
                     marker: {color: ["red","green","blue"][i], 
-                             size:[3,4,7][i],
+                             size:[5,7,9][i],
                              opacity:[.2,.9,.3][i]} 
                     }),
                 )

@@ -136,7 +136,7 @@ export default {
             lib: [1,1000],
             pred:[1,1],
             target: "",
-            embedded: true,
+            embedded: false,
             available_methods: ['Simplex','SMap','EmbedDimension',
                                 'PredictNonlinear','PredictInterval'],
             method: 'Simplex',
