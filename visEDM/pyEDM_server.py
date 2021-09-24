@@ -18,10 +18,10 @@ def try_catch_wrap(func):
 
 def run_pyEDM_server(df=None,port=5000,serve_html=True,debug=False):
 
-    if df is None:
+    if df is None or type(df)==type(str()):
         if len(sys.argv)>1:
             df = pd.read_csv(sys.argv[1])
-        elif type(df)=="str":
+        elif type(df)==type(str()):
             df = pd.read_csv(df)
         else:
             raise Exception("DataFrame nor filepath specified")
